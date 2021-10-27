@@ -5,7 +5,8 @@ const {
     GraphQLString,
     // GraphQLSchema takes in root query and returns a graphql schema instance
     GraphQLSchema,
-    GraphQLList
+    GraphQLList,
+    GraphQLNonNull
 } = graphql;
 const axios = require('axios');
 
@@ -76,7 +77,55 @@ const RootQuery = new GraphQLObjectType({
     }
 });
 
+// Define a mutation type
+const mutation = new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+        addUser: {
+            type: UserType,
+            args: {
+                //Set firstName and age to be none null
+                firstName: { type: new GraphQLNonNull(GraphQLString) },
+                age: { type: new GraphQLNonNull(GraphQLInt) },
+                companyId: { type: GraphQLString }
+            },
+            resolve(parentValue, { firstName, age }) {
+                return axios.post('http://localhost:3000/users', { firstName, age })
+                    .then(res => res.data);
+            }
+        },
+        deleteUser: {
+            //We have to setup the return type although there is nothing return for delete
+            type: UserType,
+            args: {
+                id: { type: new GraphQLNonNull(GraphQLString) }
+            },
+            resolve(parentValue, { id }) {
+                return axios.delete(`http://localhost:3000/users/${id}`)
+                    .then(res => res.data);
+            }
+        },
+        editUser: {
+            //We have to setup the return type although there is nothing return for delete
+            type: UserType,
+            args: {
+                id: { type: new GraphQLNonNull(GraphQLString) },
+                firstName: { type: GraphQLString },
+                age: { type: GraphQLInt },
+                companyId: { type: GraphQLString }
+            },
+            resolve(parentValue, { id, firstName, age, companyId }) {
+                // JSON server will not update the user id if you provide a id in args
+                // Use PATCH instead of PUT to just update the args you provided
+                return axios.patch(`http://localhost:3000/users/${args.id}`, args)
+                    .then(res => res.data);
+            }
+        }
+    }
+})
+
 module.exports = new GraphQLSchema({
-    query: RootQuery
+    query: RootQuery,
+    mutation: mutation
 });
 
